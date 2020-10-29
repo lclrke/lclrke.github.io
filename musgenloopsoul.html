@@ -1,0 +1,394 @@
+
+<html>
+<head>
+  <meta>
+</head>
+<body>
+<button onclick=gen()>generate</button>
+<html>
+  <head>
+    <script src="https://cdn.jsdelivr.net/npm/@magenta/music@0.0.10"></script>
+    <script src="https://unpkg.com/tone@13.8.25/build/Tone.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tonaljs/tonal/browser/tonal.min.js"></script>
+
+  </head>
+
+  <body>
+
+  </body>
+
+</html>
+
+  <script>
+
+
+Tone.Transport.bpm.value = 60;
+  let melodyRnn = new mm.MusicRNN( 'https://storage.googleapis.com/magentadata/js/checkpoints/music_rnn/chord_pitches_improv');
+ let melodyRnnLoaded = melodyRnn.initialize()
+
+  let arrayofpitches = [];
+  var frameinterval=setInterval(gen, 1000);
+
+
+
+    const HangDrum = new Tone.Sampler({
+
+
+    "G4": "G4.wav",
+    "D4": "D4.wav",
+    "A3": "A3.wav",
+    "E3": "E3.wav",
+
+    }, {
+      "release" : 1,
+      "baseUrl" : "https://lclrke.github.io/Sampler/HangDrum/"
+    }).toMaster();
+  HangDrum.volume.value = -14;
+
+
+
+const pianosampler = new Tone.Sampler({
+
+"D4": "Dm.wav",
+"E4": "Em.wav",
+  "F4": "F.wav",
+  "G4": "G.wav",
+"A4": "Am.wav",
+"C4": "C.wav",
+
+}, {
+  "release" : 1,
+  "baseUrl" : "https://lclrke.github.io/Sampler/SoulPianoChords/"
+}).toMaster();
+pianosampler.volume.value = -14;
+
+
+
+const AiryMarimba = new Tone.Sampler({
+
+
+"G4": "G4.wav",
+"D4": "D4.wav",
+"A3": "A3.wav",
+"E3": "E3.wav",
+
+}, {
+  "release" : 1,
+  "baseUrl" : "https://lclrke.github.io/Sampler/AiryMarimba/"
+}).toMaster();
+AiryMarimba.volume.value = -10;
+
+
+
+
+
+
+
+async function gen(){
+     await melodyRnnLoaded;
+
+
+   let seed = {
+     notes: [
+       {pitch: Tone.Frequency('C5').toMidi(), quantizedStartStep: 0, quantizedEndStep: 4}
+     ],
+     totalQuantizedSteps: 4,
+     quantizationInfo: { stepsPerQuarter: 4}
+   };
+   let steps = 10;
+   let temperature = 1.2;
+
+
+
+
+
+///SETUP FOR PLAYING RANDOM CHORD
+
+Tone.Transport.stop()
+Tone.Transport.cancel()
+
+
+let chords = ['Am','C','Dm','Em','F','G'];
+var randomChord = chords[Math.floor(Math.random()*chords.length)];
+let chordProgression = [randomChord];
+console.log('Chord: ', chordProgression);
+let result = await melodyRnn.continueSequence(seed, steps, temperature, chordProgression);
+
+//GET NOTES
+for (let note of result.notes) {
+        column = note.quantizedStartStep;
+        let noteName = Tone.Frequency(note.pitch, 'midi').toNote();
+        arrayofpitches.push(noteName);
+    }
+
+
+///FILTER OUT ACCIDENTALS
+var seqtuned = arrayofpitches;
+    var toRemove = ["G#3","G#4","G#5","A#3","A#4","A#5","B#3","B#4","B#5","C#3","C#4","C#5","D#3","D#4","D#5","F#3","F#4","F#5"];
+
+    var seqtuned = seqtuned.filter((item) => !toRemove.includes(item));
+    console.log('Melody: ', seqtuned)
+
+
+
+
+
+///PLAYSTUFFi
+
+
+
+if (randomChord == 'Am') {  AmSoul(), Abass()};
+if (randomChord == 'C') {  CSoul(), Cbass()};
+if (randomChord == 'Dm') {  DmSoul(), Dbass()};
+if (randomChord == 'Em') {  EmSoul(), Ebass()};
+if (randomChord == 'F') {  FSoul(), Fbass()};
+if (randomChord == 'G') {  GSoul(), Gbass()};
+
+
+
+
+
+///const synth = new Tone.Synth().chain( Tone.Master);
+
+var freeverb3 = new Tone.Freeverb();
+var feedbackDelay = new Tone.FeedbackDelay("8n", 0.1);
+var reverb3 = new Tone.JCReverb(0.1);
+var leaddist = new Tone.Distortion(.1);
+var leadfilter = new Tone.Filter(200, "highpass");
+var synth = new Tone.Synth({
+  "oscillator" : {
+    "type" : "sine",
+    "harmonicity" : 0.0,
+    "modulationType" : "off"
+  },
+  "envelope" : {
+    "attackCurve" : "exponential",
+    "attack" : 0.01,
+    "decay" : 0.2,
+    "sustain" : 0.2,
+    "release" : .4,
+  },
+  "portamento" : .03,
+}).chain(feedbackDelay,reverb3 ,leaddist,leadfilter,  Tone.Master);
+synth.volume.value = -18;
+
+///LEAD PART
+
+
+
+    const seq = new Tone.Sequence((time, note) => {
+      //seq.dispose();
+synth.triggerAttackRelease(note, 0.2, time);
+      ///CAN SWITCH THIS TO WHATEVER YOU WANT TO PLAY
+      //AiryMarimba.triggerAttackRelease(note, 0.9, time);
+    //HangDrum.triggerAttackRelease(note, 0.1, time);
+      // subdivisions are given as subarrays
+    },
+
+
+
+ [seqtuned],"4n").start(0);
+seq.loop = 2;
+//seq.loopEnd = "1n";
+
+
+
+
+
+//const osc = new Tone.Oscillator().toMaster();
+// repeated event every 8th note
+//Tone.Transport.scheduleRepeat((time) => {
+  // use the callback time to schedule events
+
+  //osc.start(time).stop(time + 0.1);
+//}, "8n");
+// transport must be started before it starts invoking events
+
+
+
+Tone.Transport.start();
+arrayofpitches = [];
+
+ }
+
+
+
+
+
+//////SOUL PIANO CHORD Sampler
+
+function DmSoul(){
+      pianosampler.triggerAttackRelease("D4", "4n");
+    };
+
+function GSoul(){
+          pianosampler.triggerAttackRelease("G4", "4n");
+        };
+
+
+function EmSoul(){
+              pianosampler.triggerAttackRelease("E4", "4n");
+            };
+
+function FSoul(){
+  pianosampler.triggerAttackRelease("F4", "4n");
+  };
+
+
+function AmSoul(){
+    pianosampler.triggerAttackRelease("A4", "4n");
+    };
+
+    function CSoul(){
+        pianosampler.triggerAttackRelease("C4", "4n");
+        };
+
+
+
+
+
+
+
+
+
+   ///POLY SYNTH + EFFECTS
+
+   ///const distortion = new Tone.Distortion(0.4).toMaster();
+   var verb= new Tone.Reverb ( 1.5 );
+   var freeverb = new Tone.Freeverb(0.2,3000);
+   var polyfilter = new Tone.Filter(500, "lowpass")
+   var vol1 = new Tone.Volume(-10);
+   var polyPong = new Tone.PingPongDelay("64n", 0.1)
+   polyPong.wet.value = 0.5;
+
+   var polySynth = new Tone.PolySynth(6, Tone.Synth, {
+     oscillator : {
+       type : "sawtooth"
+     }
+   }).chain(vol1, polyfilter, Tone.Master);
+
+
+
+
+   ///POLYSYNTH CHORDS
+
+   function DmChord(){
+                   polySynth.triggerAttackRelease(['D2','D3','F4', 'A4','C4'],"4n");
+               }
+
+   function GChord(){
+                       polySynth.triggerAttackRelease(['G1','G2','G3','B4', 'D4', 'G4'],"4n");
+                   }
+
+   function EmChord(){
+             polySynth.triggerAttackRelease(['E2', 'G4','E4','C4',],"4n");
+                                 }
+
+   function FChord(){
+       polySynth.triggerAttackRelease(['F1','F2','F3','A3', 'C4', 'A4'],"4n");
+                                                 }
+
+
+   function AmChord(){
+   polySynth.triggerAttackRelease(['A1','A2', 'C4', 'E4','A4'],"4n");
+     }
+
+   function CChord(){
+       //polySynth.triggerAttack(['C2','C3', 'E4', 'G4', 'B4'], "", 0.2);
+       polySynth.triggerAttackRelease(['C2','C3', 'E4', 'G4', 'C4'], "4n");
+         }
+
+
+
+         /////BASS
+         var bassvol = new Tone.Volume(-10);
+         var bassdist = new Tone.Distortion(100);
+         var bassdist2 = new Tone.Distortion(.3);
+         var bassfilter = new Tone.Filter(100, "lowpass")
+
+         var bass = new Tone.MonoSynth({
+         	oscillator : {
+         		type : "square"
+          },
+
+          filter : {
+          Q : 4 ,
+          type : "lowpass",
+          rolloff : -24
+          } ,
+
+          envelope : {
+            attack : 0.09 ,
+           decay : 0.1 ,
+           sustain : 0.1 ,
+           release : .001
+         },
+         filterEnvelope : {
+         attack : .001 ,
+         decay : 0.002 ,
+         sustain : 0.1 ,
+         release : 0.05 ,
+         baseFrequency : 100 ,
+         octaves : 6 ,
+         exponent : 2
+         }
+
+         }).chain( bassdist, bassfilter,bassdist2,bassvol,  Tone.Master);
+
+
+         function Dbass(){
+               bass.triggerAttackRelease("d1", "4n");
+             };
+
+         function Gbass(){
+                   bass.triggerAttackRelease("g1", "4n");
+                 };
+
+
+         function Ebass(){
+                       bass.triggerAttackRelease("e1", "4n");
+                     };
+
+         function Fbass(){
+           bass.triggerAttackRelease("F1", "4n");
+           };
+
+
+         function Abass(){
+             bass.triggerAttackRelease("a1", "4n");
+             };
+
+             function Cbass(){
+                 bass.triggerAttackRelease("C1", "4n");
+                 };
+
+
+
+
+
+
+
+
+  </script>
+
+
+
+
+
+
+
+
+
+  <script>
+
+
+
+</script>
+
+
+
+
+
+
+</body>
+</html>
